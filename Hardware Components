@@ -1,0 +1,9 @@
+> Microcontrollers
+
+ESP32 Dev Module
+>Sensors
+BMP388 – Temperature, Pressure, Altitude
+GPS Module (NEO-6M / similar)
+>Communication
+LoRa SX126x HAT Module
+Antenna (433 / 868 / 915 MHz)
