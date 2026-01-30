@@ -1,0 +1,119 @@
+code in Arduino Ide:-
+Transmiter:-
+#include <SPI.h>
+#include <LoRa.h>
+#include <Wire.h>
+#include <Adafruit_BMP3XX.h>
+#include <TinyGPSPlus.h>
+
+// ---------- BMP388 ----------
+Adafruit_BMP3XX bmp;
+
+// ---------- GPS ----------
+HardwareSerial gpsSerial(1);
+TinyGPSPlus gps;
+
+// ---------- LoRa Pins ----------
+#define LORA_SS   15
+#define LORA_RST  16
+#define LORA_DIO1 2
+
+// ---------- GPS Pins ----------
+#define GPS_RX 17
+#define GPS_TX 16
+
+void setup() {
+  Serial.begin(9600);
+  delay(2000);
+
+  // ----- BMP388 -----
+  if (!bmp.begin_I2C()) {
+    Serial.println("BMP388 not detected!");
+    while (1);
+  }
+
+  // ----- GPS -----
+  gpsSerial.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX);
+
+  // ----- LoRa -----
+  LoRa.setPins(LORA_SS, LORA_RST, LORA_DIO1);
+  if (!LoRa.begin(433E6)) {
+    Serial.println("LoRa init failed!");
+    while (1);
+  }
+
+  Serial.println("Radiosonde Transmitter Ready");
+}
+
+void loop() {
+
+  // Read BMP388
+  bmp.performReading();
+  float temp = bmp.temperature;
+  float pressure = bmp.pressure / 100.0;
+  float altitude = bmp.readAltitude(1013.25);
+
+  // Read GPS
+  while (gpsSerial.available()) {
+    gps.encode(gpsSerial.read());
+  }
+
+  float lat = gps.location.isValid() ? gps.location.lat() : 0.0;
+  float lon = gps.location.isValid() ? gps.location.lng() : 0.0;
+  float gpsAlt = gps.altitude.isValid() ? gps.altitude.meters() : 0.0;
+
+  // Create Payload
+  String payload =
+    String(temp, 2) + "," +
+    String(pressure, 2) + "," +
+    String(altitude, 2) + "," +
+    String(lat, 6) + "," +
+    String(lon, 6) + "," +
+    String(gpsAlt, 2);
+
+  // Transmit
+  LoRa.beginPacket();
+  LoRa.print(payload);
+  LoRa.endPacket();
+
+  Serial.println("Sent: " + payload);
+
+  delay(2000);
+}
+
+Receivier Code:-
+#include <SPI.h>
+#include <LoRa.h>
+
+// ---------- LoRa Pins ----------
+#define LORA_SS   15
+#define LORA_RST  16
+#define LORA_DIO1 2
+
+void setup() {
+  Serial.begin(9600);
+  delay(2000);
+
+  LoRa.setPins(LORA_SS, LORA_RST, LORA_DIO1);
+
+  if (!LoRa.begin(433E6)) {
+    Serial.println("LoRa init failed!");
+    while (1);
+  }
+
+  Serial.println("Radiosonde Receiver Ready");
+}
+
+void loop() {
+  int packetSize = LoRa.parsePacket();
+  if (packetSize) {
+
+    String incoming = "";
+    while (LoRa.available()) {
+      incoming += (char)LoRa.read();
+    }
+
+    Serial.print("Received: ");
+    Serial.println(incoming);
+  }
+}
