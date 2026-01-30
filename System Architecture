@@ -1,0 +1,5 @@
+[ GPS ]
+| |
+| I2C | UART
+| |
+[ ESP32 ] ---- SPI ---- [ SX126x LoRa ] )))))) AIR (((((( [ SX126x ] ---- ESP32 ---- Serial Monitor
